@@ -1,0 +1,39 @@
+---
+title: "cellphones.rmd"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+setwd('/users/casimircompaore/documents/udacity/dataanalysisr/l3/data')
+
+cellphones <- read.csv("cellphones.csv", skip = 3)
+
+# import libraries tidyr and dplyr
+library(tidyr)
+library(dplyr)
+
+tbl_df(cellphones)
+
+countryCells <- gather(cellphones, "Year", "Number.CellPhones", 5:59)
+
+# The year column values have a caracter X at the beginning
+# We are removing the X caracter
+countryCells$Year <- substr(countryCells$Year, 2, 5)
+
+# select only country name, year and number of cell phones
+selectedCols <- select(countryCells, Country.Name, Year, Number.CellPhones)
+
+# Select only rows where number of phones is not NA
+selectedRows <- filter(selectedCols, !is.na(Number.CellPhones))
+
+# import ggplot2 lib
+library(ggplot2)
+
+qplot(data = selectedRows, x=Year, y=selectedRows$Number.CellPhones, geom = "bar", stat="identity", binwidth=1, ylab = "Number of phones") +
+  scale_x_discrete(limits=seq(1990, 2014, 1))
+
+```

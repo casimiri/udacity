@@ -1,0 +1,136 @@
+---
+title: "probset3"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+summary(diamonds)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+names(diamonds)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+dm <- diamonds
+
+levels(dm$cut)
+
+subset(dm, dm$carat >= 5.01)
+
+?diamonds
+
+?hist
+
+hist(dm$price, breaks=250, xlim=range(500))
+
+summary(dm$price)
+
+under500 <- subset(dm, dm$price < 500)$price
+under250 <- subset(dm, dm$price < 250)$price
+above15000 <- subset(dm, dm$price >= 15000)$price
+
+library(ggplot2)
+
+qplot(x=price, data=dm, binwidth=1) +
+  scale_x_continuous(lim=c(0,2000), breaks=seq(0, 2000, 100))
+ggsave("priceHistBin1.png")
+
+#break down the price histo by cut
+qplot(x=price, data=dm) +
+  scale_x_continuous() +
+  facet_wrap(~cut, ncol = 2)
+
+qplot(x=cut, y=price, data=dm, geom="boxplot") +
+  coord_cartesian(ylim = c(325,327))
+
+qplot(x = price, data = diamonds) + facet_wrap(~cut, scales = "free_y")
+
+?facet_wrap
+
+# Create a histogram of price per carat
+# and facet it by cut. You can make adjustments
+# to the code from the previous exercise to get
+# started.
+
+# Adjust the bin width and transform the scale
+# of the x-axis using log10.
+
+# Submit your final code when you are ready.
+
+# ENTER YOUR CODE BELOW THIS LINE.
+# ===========================================================================
+
+qplot(x = price, data = dm, binwidth=0.01) +
+  scale_x_log10() +
+  facet_wrap(~cut, scales = "free_y")
+
+
+# Investigate the price of diamonds using box plots,
+# numerical summaries, and one of the following categorical
+# variables: cut, clarity, or color.
+
+# There won’t be a solution video for this
+# exercise so go to the discussion thread for either
+# BOXPLOTS BY CLARITY, BOXPLOT BY COLOR, or BOXPLOTS BY CUT
+# to share you thoughts and to
+# see what other people found.
+
+# You can save images by using the ggsave() command.
+# ggsave() will save the last plot created.
+# For example...
+#                  qplot(x = price, data = diamonds)
+#                  ggsave('priceHistogram.png')
+
+# ggsave currently recognises the extensions eps/ps, tex (pictex),
+# pdf, jpeg, tiff, png, bmp, svg and wmf (windows only).
+
+# Copy and paste all of the code that you used for
+# your investigation, and submit it when you are ready.
+# =================================================================
+by(dm$price, dm$cut, summary)
+by(dm$price, dm$clarity, summary)
+by(dm$price, dm$color, summary)
+
+plotCut <- qplot(x=cut, y=price, data=dm, geom = "boxplot")
+plotClarity <- qplot(x=clarity, y=price, data=dm, geom = "boxplot")
+plotColor <- qplot(x=color, y=price, data=dm, geom = "boxplot")
+library(gridExtra)
+grid.arrange(plotCut, plotColor, plotClarity, ncol=2)
+
+#Interquartile Range - IQR
+IQR(dm$price)
+
+colorD <- subset(dm, dm$color=='D')
+
+quantile(colorD$price)
+
+colorJ <- subset(dm, dm$color=='J')
+
+quantile(colorJ$price)
+
+IQR(colorD$price)
+
+IQR(colorJ$price)
+
+# Investigate the price per carat of diamonds across
+# the different colors of diamonds using boxplots.
+
+qplot(x=carat, y=price, geom = "boxplot", data = dm) +
+  facet_wrap(~color, scales = "free_y", ncol=3)
+
+#Carat using frequency plot
+qplot(x=carat, data=dm, binwidth=.001) +
+  scale_x_continuous(lim=c(1, 1.1))
+
+
+```
+

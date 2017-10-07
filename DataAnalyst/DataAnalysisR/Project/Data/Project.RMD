@@ -1,0 +1,353 @@
+#Exploring Red Wine Quality
+###Udacity Nanodegree Data Analysis with R
+####By Casimir COMPAORE
+
+1. A stream-of-consciousness analysis and exploration of the data.
+
+a. Headings and text should organize your thoughts and reflect your analysis as you explored the data.
+
+b. Plots in this analysis do not need to be polished with labels, units, and titles; these plots are exploratory (quick and dirty). They should, however, be of the appropriate type and effectively convey the information you glean from them.
+
+c. You can iterate on a plot in the same R chunk, but you don’t need to show every plot iteration in your analysis.
+
+2. A section at the end called “Final Plots and Summary”
+
+You will select three plots from your analysis to polish and share in this section. The three plots should show different trends and should be polished with appropriate labels, units, and titles (see the Project Rubric for more information).
+
+3. A final section called “Reflection”
+
+This should contain a few sentences about your struggles, successes, and ideas for future exploration on the data set (see the Project Rubric for more information).
+
+
+
+
+-------------------
+In this script, we will conduct an Exploratory Data Analysis (EDA) on a data set on red wine quality based on chemical properties. The goal is to explore which chemical properties impact the quality of red wines. 
+We will use R as our EDA tool. We will start by discovering relationships in the data set by ploting, then will refine our plots better understanding. The data set can be downloaded [here](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityReds.csv) and metadata information is available [here](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt).
+
+##Analysis and Exploration of the data
+
+###Initialization
+I set the working directory to where is residing the csv file on my computer.
+```{r}
+#Set my working directory
+setwd("/Users/casimircompaore/Documents/udacity/DataAnalysisR/Project/Data")
+
+```
+
+####Import libraries
+Here we will import all R required libraries for the analysis and exploration of the data.
+```{r}
+library(ggplot2)
+library(gridExtra)
+library(nnet) #for multinominal regression
+```
+
+####Load data
+We read the csv data into a variable called "redwines"
+```{r}
+redwines <- read.csv('wineQualityReds.csv')
+```
+
+###Data variables structure and descriptive statistics
+We will display the variables structure and statistics, make some observations that will help drive the exploration.
+
+####Variables structure
+We use the str function on the data to display the internal structure of the variables.
+```{r}
+str(redwines)
+```
+
+Some observations:
+
+- There are 1599 observations and 13 variables but the variable X is just a unique identifier for the records;
+- The quality of red wine is ordered, categorical and discrete;
+- The variables free.sulfur.dioxide and total.sulfur.dioxide are discrete;
+- The rest of the variables are continuous.
+
+####Statistics
+We use the summary function to display descriptive statistics about each variable.
+```{r}
+summary(redwines)
+```
+
+Observation: the quality of red wine is ranked between 3 and 8, the mean is 5.636 and the median is 6;
+
+We will transform the quality variable to an ordered factor variable
+
+```{r}
+redwines$quality <- factor(redwines$quality, ordered = T)
+```
+
+###Exploring one variable
+
+We will use a grid to visualize in each cell of the grid a histogramm for each variable in order to see the distribution of each variable.
+
+```{r}
+grid.arrange(
+  qplot(redwines$fixed.acidity),
+  qplot(redwines$volatile.acidity),
+  qplot(redwines$citric.acid),
+  qplot(redwines$residual.sugar),
+  qplot(redwines$chlorides),
+  qplot(redwines$free.sulfur.dioxide),
+  qplot(redwines$total.sulfur.dioxide),
+  qplot(redwines$density),
+  qplot(redwines$pH),
+  qplot(redwines$sulphates),
+  qplot(redwines$alcohol),
+  qplot(redwines$quality),
+  ncol=3
+)
+```
+
+Some observations:
+
+- The variables density and pH are normally distributed, with few outliers.
+- The variables Fixed and volatile acidity, sulfur dioxides, sulphates, and alcohol are long-tailed.
+- The variables residual sugar and chlorides have extreme outliers.
+- The variables Citric acid appeared to have a large number of zero values.
+
+####Transformations
+
+We will plot on a base 10 logarithmic scale the variables fixed.acidity, volatile.acidity and citric.acid; residual.sugar, chlorides and sulphates
+
+```{r}
+
+grid.arrange(
+  ggplot(data = redwines,
+       aes(x = fixed.acidity)) +
+  geom_histogram() +
+  scale_x_log10(),
+
+ggplot(data = redwines,
+       aes(x = volatile.acidity)) +
+  geom_histogram() +
+  scale_x_log10(),
+
+ggplot(data = redwines,
+       aes(x = citric.acid)) +
+  geom_histogram() +
+  scale_x_log10(),
+
+ggplot(data = redwines, aes(x = residual.sugar)) +
+  geom_histogram() +
+  scale_x_log10() + xlab('residual.sugar, log10'),
+
+ggplot(data = redwines, aes(x = chlorides)) +
+  geom_histogram() +
+  scale_x_log10() + xlab('chlorides, log10'),
+
+ggplot(data = redwines, aes(x = sulphates)) +
+  geom_histogram() +
+  scale_x_log10() + xlab('sulphates, log10'),
+ncol = 3)
+
+```
+
+- On a base 10 logarithmic scale, the variables fixed.acidity and volatile.acidity are normally distributed.
+- The variable citric.acid is not normally distributed on a logarithmic scale.
+
+We will define a new variable as Acidity that is the sum of all acidity variables.
+
+```{r}
+redwines$acidity <- redwines$fixed.acidity + redwines$volatile.acidity + redwines$citric.acid
+qplot(redwines$acidity) +
+  scale_x_log10()
+```
+
+The new variable acidity normally distributed on a logarithmic scale.
+
+####Red Wine Quality
+
+We can see that the quality variable is normally distributed with a large majority of the red wines rated 5 or 6, and very few red wines rated 3, 4, or 8.
+
+Based on the quality variable and the observation we made, we will add another categorical variable, classifying the wines as 'bad' (for quality between 0 and 4), 'average' (for quality between 5 and 6), and 'good' (for quality between 7 and 10).
+
+We will create a R function called rateQuality to classify the red wines.
+
+```{r}
+rateQuality <- function(quality){
+  ifelse(quality < 5, 'bad', 
+            ifelse(quality < 7, 'average', 'good'))
+}
+```
+
+We will create a new variable rating by using the function above to categorize the red wines as 'bad', 'average' or 'good'. And we will plot the new rating variable.
+
+```{r}
+redwines$rating <- rateQuality(redwines$quality)
+redwines$rating <- ordered(redwines$rating, levels = c('bad', 'average', 'good'))
+summary(redwines$rating)
+qplot(redwines$rating)
+```
+
+###Exploring two variables
+
+####Bivariate plotting
+We will display in box plot each variable againts quality and then againts rating. For acidity variables we will not apply any adjustment.
+
+```{r}
+get_boxplot <- function(x, y, xlab, ylab) {
+  return(qplot(data = redwines, x = x, y = y, geom = 'boxplot', ylab = ylab, xlab = xlab))
+}
+
+grid.arrange(get_boxplot(redwines$quality, redwines$fixed.acidity,
+                                   'quality','fixed acidity'),
+             get_boxplot(redwines$quality, redwines$volatile.acidity,
+                                   'quality','volatile acidity'),
+             get_boxplot(redwines$quality, redwines$citric.acid,
+                                   'quality','citric acid'),
+             get_boxplot(redwines$quality, redwines$acidity,
+                                   'quality','acidity'),
+             get_boxplot(redwines$quality, log10(redwines$residual.sugar),
+                                   'quality','residual sugar, log10'),
+             get_boxplot(redwines$quality, log10(redwines$chlorides),
+                                   'quality','chlorides, log10'),
+             get_boxplot(redwines$quality, redwines$free.sulfur.dioxide,
+                                   'quality','free sulf. dioxide'),
+             get_boxplot(redwines$quality, redwines$total.sulfur.dioxide,
+                                   'quality','total sulf. dioxide'),
+             get_boxplot(redwines$quality, redwines$density,
+                                   'quality','density'),
+             get_boxplot(redwines$quality, redwines$pH,
+                                   'quality','pH'),
+             get_boxplot(redwines$quality, log10(redwines$sulphates),
+                                   'quality','sulphates, log10'),
+             get_boxplot(redwines$quality, redwines$alcohol,
+                                   'quality','alcohol'),
+             ncol = 4)
+
+grid.arrange(get_boxplot(redwines$rating, redwines$fixed.acidity,
+                                   'rating','fixed acidity'),
+             get_boxplot(redwines$rating, redwines$volatile.acidity,
+                                   'rating','volatile acidity'),
+             get_boxplot(redwines$rating, redwines$citric.acid,
+                                   'rating','citric acid'),
+             get_boxplot(redwines$rating, redwines$acidity,
+                                   'rating','acidity'),
+             get_boxplot(redwines$rating, log10(redwines$residual.sugar),
+                                   'rating','residual sugar, log10'),
+             get_boxplot(redwines$rating, log10(redwines$chlorides),
+                                   'rating','chlorides, log10'),
+             get_boxplot(redwines$rating, redwines$free.sulfur.dioxide,
+                                   'rating','free sulf. dioxide'),
+             get_boxplot(redwines$rating, redwines$total.sulfur.dioxide,
+                                   'rating','total sulf. dioxide'),
+             get_boxplot(redwines$rating, redwines$density,
+                                   'rating','density'),
+             get_boxplot(redwines$rating, redwines$pH,
+                                   'rating','pH'),
+             get_boxplot(redwines$rating, log10(redwines$sulphates),
+                                   'rating','sulphates, log10'),
+             get_boxplot(redwines$rating, redwines$alcohol,
+                                   'rating','alcohol'),
+             ncol = 4)
+```
+
+Some observations:
+
+Good wines seem to have:
+
+- higher fixed acidity
+- higher citric acid
+- lower volatile acidity;
+- lower pH;
+- higher sulphates;
+- higher alcohol;
+- lower chlorides ;
+- lower density;
+
+Residual sugar and sulfur dioxides did not seem to have an impact on the quality or rating of the wines.
+
+####Correlations
+
+We will calculate the correlation for each of the variables against the variable quality.
+
+```{r}
+cor_test <- function(x, y) {
+  return(cor.test(x, as.numeric(y))$estimate)
+}
+
+correlations <- c(
+  cor_test(redwines$fixed.acidity, redwines$quality),
+  cor_test(redwines$volatile.acidity, redwines$quality),
+  cor_test(redwines$citric.acid, redwines$quality),
+  cor_test(redwines$acidity, redwines$quality),
+  cor_test(log10(redwines$residual.sugar), redwines$quality),
+  cor_test(log10(redwines$chlorides), redwines$quality),
+  cor_test(redwines$free.sulfur.dioxide, redwines$quality),
+  cor_test(redwines$total.sulfur.dioxide, redwines$quality),
+  cor_test(redwines$density, redwines$quality),
+  cor_test(redwines$pH, redwines$quality),
+  cor_test(log10(redwines$sulphates), redwines$quality),
+  cor_test(redwines$alcohol, redwines$quality))
+names(correlations) <- c('fixed.acidity', 'volatile.acidity', 'citric.acid',
+                         'acidity', 'log10.residual.sugar',
+                         'log10.chlordies', 'free.sulfur.dioxide',
+                         'total.sulfur.dioxide', 'density', 'pH',
+                         'log10.sulphates', 'alcohol')
+correlations
+```
+
+The following variables have relatively higher correlations to wine quality:
+
+- alcohol
+- sulphates (log10)
+- volatile acidity
+- citric acid
+
+We will plot these variables against each other and faceted by wine rating, the variable created based on the quality variable:
+
+```{r}
+ggplot(data = redwines, aes(x = log10(sulphates), y = alcohol)) +
+  facet_wrap(~rating) +
+  geom_point()
+
+ggplot(data = redwines, aes(x = volatile.acidity, y = alcohol)) +
+  facet_wrap(~rating) +
+  geom_point()
+
+ggplot(data = redwines, aes(x = citric.acid, y = alcohol)) +
+  facet_wrap(~rating) +
+  geom_point()
+
+ggplot(data = redwines, aes(x = volatile.acidity, y = log10(sulphates))) +
+  facet_wrap(~rating) +
+  geom_point()
+
+ggplot(data = redwines, aes(x = citric.acid, y = log10(sulphates))) +
+  facet_wrap(~rating) +
+  geom_point()
+
+ggplot(data = redwines, aes(x = citric.acid, y = volatile.acidity)) +
+  facet_wrap(~rating) +
+  geom_point()
+
+cor.test(redwines$volatile.acidity, redwines$citric.acid)
+```
+
+###Predicting Red Wine Quality
+
+Using the insights that we have now about our data, we will predict the quality of wine.
+
+####Multinomial Logistic Regression
+We will use multinomial logistic regression to classify ratings of wine.
+
+In our earlier analysis we found that there is a strong relationship between wine quality and its alcohol. Lets predict the rating of wine just based on its alcohol percentage.
+```{r}
+model_mglm = multinom(rating ~ alcohol, data = redwines)
+pred_mglm = predict(model_mglm)
+```
+
+The prediction is:
+
+```{r}
+table(redwines$rating,pred_mglm)
+```
+
+###Final Plots and Summary
+
+
+#References
+https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt

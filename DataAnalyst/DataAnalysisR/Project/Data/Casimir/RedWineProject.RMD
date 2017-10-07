@@ -1,0 +1,353 @@
+#Exploring Red Wine Quality
+###Udacity Nanodegree Data Analysis with R
+####By Casimir COMPAORE
+
+###Question and dataset
+
+We want to understand which chemical properties influence the quality of red wines.
+
+The data set can be downloaded [here](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityReds.csv) and metadata information is available [here](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt).
+
+We will use the following R libraries:s
+```{r}
+suppressMessages(library(ggplot2))
+suppressMessages(library(gridExtra))
+suppressMessages(library(GGally))
+suppressMessages(library(stats)) #linear model
+suppressMessages(library(memisc)) #mtable
+suppressMessages(library(randomForest))
+```
+
+To read the dataset I will use the read.csv command.
+
+```{r}
+reds <- read.csv('wineQualityReds.csv')
+names(reds)
+str(reds)
+```
+
+This dataset has 1599 rows or observations in it with 13 variables. Each observation represents an evalution of a red wine quality.
+
+- The variable X is just a unique identifier for the records;
+- The quality of red wine is ordered, categorical and discrete;
+- The variables free.sulfur.dioxide and total.sulfur.dioxide are discrete;
+- The rest of the variables are continuous.
+
+
+##Exploratory Data Analysis
+
+I will first explore the dataset one variable at a time. Then I will explore two variables, and multiple variables. And finally I will predict the red wine quality based of some chemical properties.
+
+###Explore one variable
+
+I will use the qplot function to plot each feature of the dataset.
+
+####Histogramm of red wines features
+```{r}
+p1 <- qplot(x = fixed.acidity, data = reds, , binwidth=.2)
+p2 <- qplot(x = log10(fixed.acidity), data = reds, , binwidth=.05)
+p3 <- qplot(x = volatile.acidity, data = reds, binwidth=.02)
+p4 <- qplot(x = citric.acid, data = reds, binwidth=.01)
+p5 <- qplot(x = residual.sugar, data = reds, binwidth=.1) 
+p6 <- qplot(x = chlorides, data = reds, binwidth=.01)
+p7 <- qplot(x = free.sulfur.dioxide, data = reds, binwidth=1) 
+p8 <- qplot(x = total.sulfur.dioxide, data = reds, binwidth=10) 
+p9 <- qplot(x = density, data = reds, binwidth=.001)
+p10 <- qplot(x = pH, data = reds, binwidth=.05) 
+p11 <- qplot(x = sulphates, data = reds, binwidth=.05)
+p12 <- qplot(x = alcohol, data = reds, binwidth=.1) 
+p13 <- qplot(x = quality, data = reds, binwidth=1)
+grid.arrange(p1, p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13, ncol = 3)
+```
+
+- The feature fixed.acidity has some outliers and is not normally-distributed. But the feature is normally-distributed on logarithmic base. 
+- The feature volatile.acidity seems normally-distributed with some outliers.
+- The feature citric.acid has many 0 values, is not normally-distributed and has outliers.
+- The feature residual.sugar has many outliers, has a long tail, and is not normally-distributed.
+- The feature chlorides has many outliers, has a long tail, and is not normally-distributed.
+- The features free.sulfur.dioxide and total.sulfur.dioxide have outliers each, and are not normally-distributed each. Their plots have the same shape.
+- The feature density is normally-distributed.
+- The feature pH is normally-distributed.
+- The feature sulphates is not normally-distributed and has outliers.
+- The feature alcohol is not normally-distributed and has outliers.
+- The feature quality is normally-distributed.
+
+###Explore two variables
+
+I will first explore the target feature (quality) relation with each input feature. Then I will explore the relationships between input features.
+
+####Relationship between quality feature and input variables
+
+```{r}
+
+p1 <- ggplot(aes(x = quality, y = fixed.acidity), data = reds) +
+  geom_point(color='blue') +
+  geom_line( stat = 'summary', fun.y=mean) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.1, color='red', linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.5, linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.9, color='green', linetype=2)
+
+p2 <- ggplot(aes(x = quality, y = volatile.acidity), data = reds) +
+  geom_point(color='blue') +
+  geom_line( stat = 'summary', fun.y=mean) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.1, color='red', linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.5, linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.9, color='green', linetype=2)
+
+p3 <- ggplot(aes(x = quality, y = citric.acid), data = reds) +
+  geom_point(color='blue') +
+  geom_line( stat = 'summary', fun.y=mean) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.1, color='red', linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.5, linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.9, color='green', linetype=2)
+
+p4 <- ggplot(aes(x = quality, y = residual.sugar), data = reds) +
+  geom_point(color='blue') +
+  geom_line( stat = 'summary', fun.y=mean) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.1, color='red', linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.5, linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.9, color='green', linetype=2)
+
+p5 <- ggplot(aes(x = quality, y = chlorides), data = reds) +
+  geom_point(color='blue') +
+  geom_line( stat = 'summary', fun.y=mean) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.1, color='red', linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.5, linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.9, color='green', linetype=2)
+
+p6 <- ggplot(aes(x = quality, y = free.sulfur.dioxide), data = reds) +
+  geom_point(color='blue') +
+  geom_line( stat = 'summary', fun.y=mean) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.1, color='red', linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.5, linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.9, color='green', linetype=2)
+
+p7 <- ggplot(aes(x = quality, y = total.sulfur.dioxide), data = reds) +
+  geom_point(color='blue') +
+  geom_line( stat = 'summary', fun.y=mean) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.1, color='red', linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.5, linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.9, color='green', linetype=2)
+
+p8 <- ggplot(aes(x = quality, y = density), data = reds) +
+  geom_point(color='blue') +
+  geom_line( stat = 'summary', fun.y=mean) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.1, color='red', linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.5, linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.9, color='green', linetype=2)
+
+p9 <- ggplot(aes(x = quality, y = pH), data = reds) +
+  geom_point(color='blue') +
+  geom_line( stat = 'summary', fun.y=mean) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.1, color='red', linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.5, linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.9, color='green', linetype=2)
+
+p10 <- ggplot(aes(x = quality , y = sulphates), data = reds) +
+  geom_point(color='blue') +
+  geom_line( stat = 'summary', fun.y=mean) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.1, color='red', linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.5, linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.9, color='green', linetype=2)
+
+p11 <- ggplot(aes(x = quality, y = alcohol), data = reds) +
+  geom_point(color='blue') +
+  geom_line( stat = 'summary', fun.y=mean) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.1, color='red', linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.5, linetype=2) +
+  geom_line(stat = 'summary', fun.y=quantile, probs=.9, color='green', linetype=2)
+
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11, ncol=3)
+```
+
+
+Good wines seem to have:
+
+- lower volatile acidity;
+- higher alcohol;
+- higher fixed acidity
+- higher citric acid
+- lower pH;
+- higher sulphates;
+- lower chlorides ;
+- lower density;
+- Residual sugar and sulfur dioxides did not seem to have an impact on the quality or rating of the wines.
+
+####Correlations between features
+
+I will use ggpairs to visualize the correlations between features in the red wines dataset.
+
+```{r}
+reds_tmp = reds[,2:13]
+colnames(reds_tmp) = c("Fix.A", "Vol.A", "Citric", "Sugar", "CI", 
+                              "Free.SO2", "SO2", "Density", "pH", "SO4", "Alc", "Q")
+ggpairs(reds_tmp,  params=list(size=3)) + 
+  theme(axis.text = element_blank())
+```
+
+I assume existence of correlation between two features where the correlation coefficient is outside the intervale [-0.32, 0.32].
+
+Some observations:
+
+- Correlation exists between quality and alcohol
+- Correlation exists between quality and volatile.acidity
+- Correlation exists between citric.acid and volatile.acidity
+- Correlation exists between citric.acid and Positive fixed.acidity
+- Correlation exists between free.sulfur.dioxide and total.sulfur.dioxide
+- Correlation exists between density and residual.sugar
+- Correlation exists between density and fixed.acidity
+- Correlation exists between density and citric.acid
+- Correlation exists between pH and density
+- Correlation exists between pH and citric.acid
+- Correlation exists between pH and fixed.acidity
+- Correlation exists between sulphates and chlorides
+- Correlation exists between alcohol and density
+
+
+###Explore multiple variables
+
+I will compute a new categorial variable based on quality called rating. For red wines quality rated less than 5, rating will have the value 'bad'. For red wines quality rated 5 or 6, rating will have the value 'average'. And rating will have value for redquality egal 7 and above. This feature will be used to color our plots.
+
+```{r}
+reds$rating <- ifelse(reds$quality < 5, 'bad', 
+            ifelse(reds$quality < 7, 'average', 'good'))
+
+reds$rating <- ordered(reds$rating, levels = c('bad', 'average', 'good'))
+```
+
+The features volatile.acidity and alcohol are correlated to the target feature quality.
+I test the independence between the features volatile.acidity and alcohol using pearson correlation method.
+The density and pH features are normally distributed. But the density feature is strongly correlated to the alcohol feature. The pH feature is neither correlated to the alcohol, neither to the volatile.acidity feature. I thought of creating a categorial variable based on pH, but I abondonned the idea as all pH in the dataset are less than 7, specific to acidic solutions.
+The rest of the features where not normally distributed even after log10 or sqrt transformations and are not correlated to the quality feature.
+
+Let test the independence of the feature alcohol and the feature volatile.acidity using correlation test with pearson method.
+
+```{r}
+#Compute correlation between features alcohol and volatile.acidity for independence
+cor.test(reds$volatile.acidity, reds$alcohol, method = 'pearson')
+```
+
+With 95 percent confidence interval between -0.2488416 and -0.1548020 of correlation coefficient, the features volatile.acidity and alcohol are independent.
+
+I display boxplots of alcohol/quality and volatile.acidity/quality color coded by quality rating.
+
+```{r}
+
+p1 <- ggplot(aes(x = quality, y = alcohol, color=rating), data = reds) + 
+  geom_boxplot()
+
+p2 <- ggplot(aes(x = quality, y = volatile.acidity, color=rating), data =reds) +
+  geom_boxplot()
+
+grid.arrange(p1,p2,ncol=2)
+```
+
+From these boxplots, the quality of red wine is good when the acohol percentage is high. And the quality of red wine is good at low values of the volatile.acidity.
+
+I display the points plot of volatile.acidity/alcohol features color coded with quality rating feature.
+
+```{r}
+ggplot(aes(x = alcohol, y = volatile.acidity, color=rating), data =reds) +
+  geom_point()
+```
+
+Again the red wines rated good are at low values of volatile.acidity and high values of alcohol.
+
+###Quality predictions
+
+I will use a linear model to predict the quality of red wines based on independent input features.
+
+```{r}
+m1 <- lm(quality ~ alcohol, data = reds)
+m2 <- update(m1, ~ . + volatile.acidity)
+m3 <- update(m2, ~ . + pH)
+m4 <- update(m3, ~ . + sulphates)
+mtable(m1, m2, m3) 
+```
+
+With small R-Squared values, the linear model seems not adapted in predicting the quality of red wines.
+
+##Final Plots and Summary
+
+###Histogram of Wine Quality
+
+I will display histogram of wine quality to see how quality is distributed in our dataset.
+
+```{r}
+ggplot(data=reds, aes(x = as.factor(quality))) + 
+  geom_histogram(color = I('black'),fill = I('#990055')) + 
+  xlab("Red Wine Quality")
+```
+
+The quality rating with highest number is 6. And we can see that most of wines in our dataset is rated between 5 and 7.
+
+####Relationship between volatile acidity and citric acid
+
+I use scatter plot to display relationship between two numerical variables: citric acid and volatile acidity. I color code the points with the quality rating categorical variable.
+
+```{r}
+ggplot(data = reds, aes(x = reds$citric.acid, y = reds$volatile.acidity, color=rating)) + 
+  geom_point() +
+  geom_smooth(method = lm, se = FALSE) +
+  xlab("Red wine citric acid") + ylab("Red wine volatile acidity") +
+  coord_cartesian(xlim = c(0,1), ylim = c(.1200, 1.5800)) +
+  ggtitle("Relationship between red Wine volatile acidity and citric acid")
+```
+
+The plot shows that there is positive relation between the variables citric acid and volatile acidity. The colors show that good wines are likely to have low volatile acidity and citric acid arround 0.5. 
+
+####Relationship between alcohol and density
+
+I use scatter plot to display relationship between two numerical variables: alcohol and density. I color code the points with the quality rating categorical variable.
+
+```{r}
+ggplot(data = reds, aes(x = reds$density, y = reds$alcohol, color=rating)) + 
+  geom_point() +
+  geom_smooth(method = lm, se = FALSE) +
+  xlab("Red wine density") + ylab("Red wine alcohol") +
+  coord_cartesian(xlim = c(.9901, 1.0040), ylim = c(8.40,14.90)) +
+  ggtitle("Relationship between red Wine alcohol and density")
+```
+
+The plot shows that there is positive relation between the variables alcohol and density. The colors show that good wines are likely to have high alcohol percentage
+
+####Histogram of Wine alcohol color coded with quality rating
+
+I will display a histogram of wine alcohol. Each bar is proportionally color coded using the quality rating.
+
+```{r}
+ggplot(data= reds, aes(x=reds$alcohol , fill = reds$rating)) + 
+  geom_histogram(aes(y=..count../sum(..count..)), binwidth=.3) +
+  ggtitle("Histogram of Wine alcohol") +
+  xlab("Acolhol") + ylab("Percent (count)") + 
+  scale_fill_discrete(name="Quality rating")
+```
+
+The color coded histogram shows that the proportion of good wines is increasing when alcohol percentage is increasing.
+
+####Histogram of Wine volatile acidity color coded with quality rating
+
+I will display a histogram of wine volatile acidity Each bar is proportionally color coded using the quality rating.
+
+```{r}
+ggplot(data= reds, aes(x=reds$volatile.acidity , fill = reds$rating)) + 
+  geom_histogram(aes(y=..count../sum(..count..)), binwidth=.08) +
+  ggtitle("Histogram of Wine volatile acidity") +
+  xlab("volatile acidity") + ylab("Percent") + 
+  scale_fill_discrete(name="Quality rating")
+```
+
+The color coded histogram shows that the proportion of good wines is decreasing when volatile acidity is increasing.
+
+##Reflection
+
+Based on the EDA, alcohol percentage is one of the most important factor that impacts the quality of red wine. Another important factor impacting the quality of a red wine is volatile Acidity.
+
+But a linear model is not obvious to use in predicting the quality of red wine. In this case for example, where the quality is determined by tasting the wine by experts, there is room for subjectivity. Some people even saying the same wine tastes differently depending on the time of the day, the weather and mood of the tester. I will recommend using a model like random forest to predict the quality.
+
+Another issue was validating the model. Because we didn't divide the dataset into model training data and testing data, there is a risk of over fitting the data regardless of the model.
+
+###References
+https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt
+https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityReds.csv
+https://en.wikipedia.org/wiki/PH
